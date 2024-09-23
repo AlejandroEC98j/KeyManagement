@@ -9,6 +9,6 @@ contenedores Docker para gestionar el entorno de desarrollo.
 ## Integrantes
 | Apellidos y nombres | Rol |
 |---------------------|-----|
-| Bonifacio Rojas Marlon | Scrump Master |
+| Bonifacio Rojas Marlon | Scrum Master |
 | Espiritu Campos Alejandro | Team |
 | Huali Cuyotupa Jhosep | Team |
