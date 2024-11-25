@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from src.vista.GUIarchivos import GUIarchivos  # Importar GUIArchivos
+from vista.GUIArchivos import GUIArchivos  # Importar GUIArchivos
 
 class App(tk.Tk):
     def __init__(self):
