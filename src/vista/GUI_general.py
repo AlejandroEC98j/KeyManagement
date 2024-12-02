@@ -1,95 +1,302 @@
 import sys
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QSlider, QCheckBox, QLineEdit
+    QLabel, QLineEdit, QScrollArea, QComboBox, QSlider, QCheckBox
 )
 from PyQt6.QtCore import Qt
+from src.logica.archivos import ArchivoManager
 from src.logica.funciones import generar_contraseña
-
 
 class App(QWidget):
     def __init__(self):
         super().__init__()
 
         # Configuración principal de la ventana
-        self.setWindowTitle("Generador de Contraseñas")
+        self.setWindowTitle("Gestión de Contraseñas")
         self.setGeometry(100, 100, 800, 600)
+        self.setStyleSheet("background-color: #2C3E50; color: white;")  # Fondo oscuro para un tema futurista
+
+        # Instancia del gestor de contraseñas
+        self.archivo_manager = ArchivoManager()
 
         # Layout principal
-        layout = QVBoxLayout(self)
+        layout = QHBoxLayout(self)
 
-        # Frame para el submenú a la izquierda
-        self.sidebar = QWidget(self)
-        self.sidebar.setStyleSheet("background-color: #2E2E2E;")
-        self.sidebar.setFixedWidth(200)
-        self.sidebar.setGeometry(0, 0, 200, 600)
+        # Sidebar (menú lateral izquierdo)
+        self.sidebar = QVBoxLayout()
+        self.create_sidebar()
+        sidebar_widget = QWidget()
+        sidebar_widget.setLayout(self.sidebar)
 
-        # Frame para el contenido principal
-        self.main_content = QWidget(self)
-        self.main_content.setStyleSheet("background-color: #FFFFFF;")
-        self.main_content.setGeometry(200, 0, 600, 600)
+        # Contenedor principal para las secciones
+        self.main_content = QScrollArea()
+        self.main_content.setWidgetResizable(True)
 
-        # Crear botones del submenú
-        self.create_sidebar_buttons()
+        # Añadir un widget vacío con layout por defecto a main_content
+        initial_widget = QWidget()
+        initial_layout = QVBoxLayout(initial_widget)
+        self.main_content.setWidget(initial_widget)
 
-        # Etiqueta de bienvenida por defecto en el contenido principal
-        self.content_label = QLabel("Bienvenido a la aplicación", self.main_content)
-        self.content_label.setGeometry(50, 20, 500, 40)
-        self.content_label.setStyleSheet("font-size: 16px; font-family: Arial; color: black;")
+        # Añadir al layout principal
+        layout.addWidget(sidebar_widget, 1)
+        layout.addWidget(self.main_content, 4)
 
-        self.show()
+        # Estado inicial
+        self.current_section = None
+        self.display_section("Archivos")
 
-    def create_sidebar_buttons(self):
-        # Lista de secciones
-        sections = ["Archivos", "Categoría", "Generar contraseña", "Ajustes", "Mi perfil"]
-
-        y_pos = 100  # Posición vertical para los botones
+    def create_sidebar(self):
+        """Crea los botones de la barra lateral."""
+        sections = ["Archivos", "Generar contraseña", "Ajustes", "Mi perfil"]
         for section in sections:
-            button = QPushButton(section, self.sidebar)
-            button.setGeometry(10, y_pos, 180, 40)
+            button = QPushButton(section)
             button.setStyleSheet("""
                 QPushButton {
-                    background-color: #3E3E3E;
+                    background-color: #2980B9;
                     color: white;
-                    font-size: 12px;
-                    border: 1px solid #444444;
-                    border-radius: 5px;
-                    padding: 5px;
+                    font-size: 16px;
+                    padding: 15px;
+                    border-radius: 15px;
+                    text-align: left;
+                    border: 2px solid transparent;
                 }
                 QPushButton:hover {
-                    background-color: #4CAF50;
+                    background-color: #3498DB;
+                    border: 2px solid #1ABC9C;
                 }
             """)
             button.clicked.connect(lambda checked, s=section: self.display_section(s))
-            y_pos += 50
+            self.sidebar.addWidget(button)
+        self.sidebar.addStretch()
 
     def display_section(self, section):
-        # Limpia el contenido actual
-        for widget in self.main_content.findChildren(QWidget):
-            widget.deleteLater()
+        """Muestra la sección seleccionada."""
+        if self.current_section == section:
+            return
+        self.current_section = section
 
-        # Mostrar el contenido correspondiente a la sección
-        if section == "Generar contraseña":
-            self.show_advanced_password_generator()
-        else:
-            label = QLabel(f"Sección: {section}", self.main_content)
-            label.setStyleSheet("font-size: 16px; font-family: Arial; color: black;")
-            label.move(50, 80)
-            label.show()
+        # Limpiar el contenido actual
+        try:
+            if self.main_content.widget():
+                for i in reversed(range(self.main_content.widget().layout().count())):
+                    widget = self.main_content.widget().layout().itemAt(i).widget()
+                    if widget:
+                        widget.deleteLater()
+        except Exception as e:
+            print(f"Error al limpiar contenido: {e}")
+
+        # Añadir el nuevo widget de la sección seleccionada
+        try:
+            if section == "Archivos":
+                self.show_archivos()
+            elif section == "Generar contraseña":
+                self.show_advanced_password_generator()
+            elif section == "Ajustes":
+                self.show_settings()
+            elif section == "Mi perfil":
+                self.show_profile()
+        except Exception as e:
+            print(f"Error al mostrar sección {section}: {e}")
+
+    def show_settings(self):
+        """Muestra la sección de ajustes."""
+        container = QWidget()
+        layout = QVBoxLayout(container)
+
+        title = QLabel("Ajustes")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("font-size: 22px; color: #ECF0F1; font-weight: bold; margin-bottom: 20px;")
+        layout.addWidget(title)
+
+        settings_label = QLabel("Configura las opciones de la aplicación aquí.")
+        settings_label.setStyleSheet("font-size: 16px; color: #BDC3C7;")
+        layout.addWidget(settings_label)
+
+        self.main_content.setWidget(container)
+
+    def show_profile(self):
+        """Muestra la sección de mi perfil."""
+        container = QWidget()
+        layout = QVBoxLayout(container)
+
+        title = QLabel("Mi Perfil")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("font-size: 22px; color: #ECF0F1; font-weight: bold; margin-bottom: 20px;")
+        layout.addWidget(title)
+
+        profile_label = QLabel("Información del usuario.")
+        profile_label.setStyleSheet("font-size: 16px; color: #BDC3C7;")
+        layout.addWidget(profile_label)
+
+        self.main_content.setWidget(container)
+
+
+    def show_archivos(self):
+        """Muestra la sección de archivos."""
+        container = QWidget()
+        layout = QVBoxLayout(container)
+
+        # Encabezado
+        header = QHBoxLayout()
+        title = QLabel("Lista de contraseñas")
+        title.setStyleSheet("font-size: 24px; color: #ECF0F1; font-weight: bold;")
+        header.addWidget(title)
+
+        add_button = QPushButton("Añadir contraseña")
+        add_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1ABC9C;
+                color: white;
+                font-size: 14px;
+                padding: 10px;
+                border-radius: 15px;
+                border: 2px solid transparent;
+            }
+            QPushButton:hover {
+                background-color: #16A085;
+                border: 2px solid #2980B9;
+            }
+        """)
+        add_button.clicked.connect(self.add_password_window)
+        header.addWidget(add_button)
+        layout.addLayout(header)
+
+        # Lista de contraseñas
+        for idx, password in enumerate(self.archivo_manager.get_passwords()):
+            row = QHBoxLayout()
+            row.addWidget(QLabel(password["network"]))
+            row.addWidget(QLabel(password["email"]))
+            row.addWidget(QLabel(password["category"]))
+            row.addWidget(QLabel(password["date"]))
+
+            # Botón Copiar
+            copy_button = QPushButton("Copiar")
+            copy_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #F39C12;
+                    color: white;
+                    font-size: 14px;
+                    padding: 10px;
+                    border-radius: 10px;
+                    border: 2px solid transparent;
+                }
+                QPushButton:hover {
+                    background-color: #E67E22;
+                }
+            """)
+            copy_button.clicked.connect(lambda checked, p=password["password"]: self.copy_to_clipboard(p))
+            row.addWidget(copy_button)
+
+            # Botón Editar
+            edit_button = QPushButton("Editar")
+            edit_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #8E44AD;
+                    color: white;
+                    font-size: 14px;
+                    padding: 10px;
+                    border-radius: 10px;
+                    border: 2px solid transparent;
+                }
+                QPushButton:hover {
+                    background-color: #9B59B6;
+                }
+            """)
+            edit_button.clicked.connect(lambda checked, i=idx: self.edit_password_window(i))
+            row.addWidget(edit_button)
+
+            # Botón Eliminar
+            delete_button = QPushButton("Eliminar")
+            delete_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #E74C3C;
+                    color: white;
+                    font-size: 14px;
+                    padding: 10px;
+                    border-radius: 10px;
+                    border: 2px solid transparent;
+                }
+                QPushButton:hover {
+                    background-color: #C0392B;
+                }
+            """)
+            delete_button.clicked.connect(lambda checked, i=idx: self.delete_password(i))
+            row.addWidget(delete_button)
+
+            layout.addLayout(row)
+
+        self.main_content.setWidget(container)
+
+    def add_password_window(self):
+        """Ventana para añadir una nueva contraseña."""
+        dialog = QWidget()
+        dialog.setWindowTitle("Añadir Contraseña")
+        dialog.setGeometry(300, 300, 400, 300)
+
+        layout = QVBoxLayout(dialog)
+
+        self.network_input = QLineEdit()
+        self.network_input.setStyleSheet("border: 1px solid #BDC3C7; padding: 10px; border-radius: 5px;")
+        layout.addWidget(QLabel("Nombre de la red social:"))
+        layout.addWidget(self.network_input)
+
+        self.email_input = QLineEdit()
+        self.email_input.setStyleSheet("border: 1px solid #BDC3C7; padding: 10px; border-radius: 5px;")
+        layout.addWidget(QLabel("Correo electrónico:"))
+        layout.addWidget(self.email_input)
+
+        self.category_input = QComboBox()
+        self.category_input.addItems(["Trabajo", "Redes sociales", "Bancario"])
+        layout.addWidget(QLabel("Categoría:"))
+        layout.addWidget(self.category_input)
+
+        self.password_input = QLineEdit()
+        self.password_input.setStyleSheet("border: 1px solid #BDC3C7; padding: 10px; border-radius: 5px;")
+        layout.addWidget(QLabel("Contraseña:"))
+        layout.addWidget(self.password_input)
+
+        add_button = QPushButton("Añadir")
+        add_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1ABC9C;
+                color: white;
+                font-size: 14px;
+                padding: 10px;
+                border-radius: 15px;
+            }
+            QPushButton:hover {
+                background-color: #16A085;
+            }
+        """)
+        add_button.clicked.connect(lambda: self.add_password(dialog))
+        layout.addWidget(add_button)
+
+        dialog.show()
+
+    def add_password(self, dialog):
+        """Añade una contraseña y actualiza la lista."""
+        self.archivo_manager.add_password(
+            self.network_input.text(),
+            self.email_input.text(),
+            self.category_input.currentText(),
+            self.password_input.text()
+        )
+        dialog.close()
+        self.show_archivos()
 
     def show_advanced_password_generator(self):
-        # Layout principal del generador de contraseñas
-        layout = QVBoxLayout()
+        """Muestra la sección de generador de contraseñas."""
+        container = QWidget()
+        layout = QVBoxLayout(container)
 
-        # Título del generador de contraseñas
-        title_label = QLabel("Generador de contraseñas")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("font-size: 18px; color: black; margin-bottom: 20px;")
-        layout.addWidget(title_label)
+        title = QLabel("Generador de Contraseñas")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("font-size: 22px; color: #ECF0F1; font-weight: bold; margin-bottom: 20px;")
+        layout.addWidget(title)
 
         # Longitud de la contraseña
         length_label = QLabel("Longitud de la contraseña:")
-        length_label.setStyleSheet("color: black;")
+        length_label.setStyleSheet("font-size: 16px; color: #BDC3C7;")
         layout.addWidget(length_label)
 
         length_slider = QSlider(Qt.Orientation.Horizontal)
@@ -99,233 +306,93 @@ class App(QWidget):
         layout.addWidget(length_slider)
 
         length_value_label = QLabel("14 caracteres")
-        length_value_label.setStyleSheet("color: black;")
+        length_value_label.setStyleSheet("font-size: 16px; color: #BDC3C7;")
         layout.addWidget(length_value_label)
         length_slider.valueChanged.connect(lambda: length_value_label.setText(f"{length_slider.value()} caracteres"))
 
         # Opciones de caracteres
         uppercase_checkbox = QCheckBox("Incluir mayúsculas (A-Z)")
         uppercase_checkbox.setChecked(True)
-        uppercase_checkbox.setStyleSheet("color: black;")
+        uppercase_checkbox.setStyleSheet("color: #BDC3C7;")
         layout.addWidget(uppercase_checkbox)
 
         lowercase_checkbox = QCheckBox("Incluir minúsculas (a-z)")
         lowercase_checkbox.setChecked(True)
-        lowercase_checkbox.setStyleSheet("color: black;")
+        lowercase_checkbox.setStyleSheet("color: #BDC3C7;")
         layout.addWidget(lowercase_checkbox)
 
         numbers_checkbox = QCheckBox("Incluir números (0-9)")
         numbers_checkbox.setChecked(True)
-        numbers_checkbox.setStyleSheet("color: black;")
+        numbers_checkbox.setStyleSheet("color: #BDC3C7;")
         layout.addWidget(numbers_checkbox)
 
         special_checkbox = QCheckBox("Incluir caracteres especiales (!@#$%^&*)")
         special_checkbox.setChecked(True)
-        special_checkbox.setStyleSheet("color: black;")
+        special_checkbox.setStyleSheet("color: #BDC3C7;")
         layout.addWidget(special_checkbox)
 
         # Crear los cuadros de texto editables con botones para cantidad mínima de números
         min_numbers_label = QLabel("Cantidad mínima de números:")
-        min_numbers_label.setStyleSheet("color: black;")
+        min_numbers_label.setStyleSheet("color: #BDC3C7;")
         layout.addWidget(min_numbers_label)
 
-        # Layout para el cuadro de texto editable y botones + y -
-        min_numbers_layout = QHBoxLayout()
-
-        min_numbers_edit = QLineEdit("1")
-        min_numbers_edit.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #444444;
-                padding: 5px;
-                color: black;
-                background-color: white;
-                width: 80px;
-            }
-        """)
-        min_numbers_layout.addWidget(min_numbers_edit)
-
-        # Botón para disminuir
-        decrement_numbers_button = QPushButton("-")
-        decrement_numbers_button.setStyleSheet("""
-            QPushButton {
-                background-color: #FF6347;
-                color: white;
-                font-size: 20px;
-                padding: 5px;
-                width: 30px;
-                height: 30px;
-                border-radius: 15px;
-                border: 1px solid #FF6347;
-            }
-            QPushButton:hover {
-                background-color: #FF4500;
-            }
-        """)
-        decrement_numbers_button.clicked.connect(lambda: self.decrement_value(min_numbers_edit))
-        min_numbers_layout.addWidget(decrement_numbers_button)
-
-        # Botón para aumentar
-        increment_numbers_button = QPushButton("+")
-        increment_numbers_button.setStyleSheet("""
-            QPushButton {
-                background-color: #32CD32;
-                color: white;
-                font-size: 20px;
-                padding: 5px;
-                width: 30px;
-                height: 30px;
-                border-radius: 15px;
-                border: 1px solid #32CD32;
-            }
-            QPushButton:hover {
-                background-color: #228B22;
-            }
-        """)
-        increment_numbers_button.clicked.connect(lambda: self.increment_value(min_numbers_edit))
-        min_numbers_layout.addWidget(increment_numbers_button)
-
-        layout.addLayout(min_numbers_layout)
+        min_numbers_input = QLineEdit("1")
+        min_numbers_input.setStyleSheet("border: 1px solid #BDC3C7; padding: 5px; border-radius: 5px;")
+        layout.addWidget(min_numbers_input)
 
         # Crear los cuadros de texto editables con botones para cantidad mínima de caracteres especiales
         min_special_label = QLabel("Cantidad mínima de caracteres especiales:")
-        min_special_label.setStyleSheet("color: black;")
+        min_special_label.setStyleSheet("color: #BDC3C7;")
         layout.addWidget(min_special_label)
 
-        # Layout para el cuadro de texto editable y botones + y -
-        min_special_layout = QHBoxLayout()
-
-        min_special_edit = QLineEdit("1")
-        min_special_edit.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #444444;
-                padding: 5px;
-                color: black;
-                background-color: white;
-                width: 80px;
-            }
-        """)
-        min_special_layout.addWidget(min_special_edit)
-
-        # Botón para disminuir
-        decrement_special_button = QPushButton("-")
-        decrement_special_button.setStyleSheet("""
-            QPushButton {
-                background-color: #FF6347;
-                color: white;
-                font-size: 20px;
-                padding: 5px;
-                width: 30px;
-                height: 30px;
-                border-radius: 15px;
-                border: 1px solid #FF6347;
-            }
-            QPushButton:hover {
-                background-color: #FF4500;
-            }
-        """)
-        decrement_special_button.clicked.connect(lambda: self.decrement_value(min_special_edit))
-        min_special_layout.addWidget(decrement_special_button)
-
-        # Botón para aumentar
-        increment_special_button = QPushButton("+")
-        increment_special_button.setStyleSheet("""
-            QPushButton {
-                background-color: #32CD32;
-                color: white;
-                font-size: 20px;
-                padding: 5px;
-                width: 30px;
-                height: 30px;
-                border-radius: 15px;
-                border: 1px solid #32CD32;
-            }
-            QPushButton:hover {
-                background-color: #228B22;
-            }
-        """)
-        increment_special_button.clicked.connect(lambda: self.increment_value(min_special_edit))
-        min_special_layout.addWidget(increment_special_button)
-
-        layout.addLayout(min_special_layout)
-
-        # Botón para generar la contraseña
-        generate_button = QPushButton("Generar contraseña")
-        generate_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                font-size: 14px;
-                padding: 10px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-        """)
-        layout.addWidget(generate_button)
+        min_special_input = QLineEdit("1")
+        min_special_input.setStyleSheet("border: 1px solid #BDC3C7; padding: 5px; border-radius: 5px;")
+        layout.addWidget(min_special_input)
 
         # Campo para mostrar la contraseña generada
         password_display = QLineEdit()
         password_display.setReadOnly(True)
-        password_display.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #444444;
-                padding: 10px;
-                color: black;
-                background-color: white;
-            }
-        """)
+        password_display.setStyleSheet("padding: 10px; font-size: 16px; background-color: #34495E; color: white;")
         layout.addWidget(password_display)
 
-        # Función de generación de contraseña
+        # Botón para generar la contraseña
+        generate_button = QPushButton("Generar Contraseña")
+        generate_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2980B9;
+                color: white;
+                font-size: 16px;
+                padding: 15px;
+                border-radius: 10px;
+                text-align: left;
+                border: 2px solid transparent;
+            }
+            QPushButton:hover {
+                background-color: #3498DB;
+            }
+        """)
+        layout.addWidget(generate_button)
+
         def generate_password():
             password = generar_contraseña(
-                longitud=length_slider.value(),
-                incluir_mayusculas=uppercase_checkbox.isChecked(),
-                incluir_minusculas=lowercase_checkbox.isChecked(),
-                incluir_numeros=numbers_checkbox.isChecked(),
-                incluir_especiales=special_checkbox.isChecked(),
-                min_numeros=int(min_numbers_edit.text()),
-                min_especiales=int(min_special_edit.text())
+                longitud=16,
+                incluir_mayusculas=True,
+                incluir_minusculas=True,
+                incluir_numeros=True,
+                incluir_especiales=True,
             )
             password_display.setText(password)
 
         generate_button.clicked.connect(generate_password)
 
-        # Agregar botón para copiar al portapapeles
-        def copy_to_clipboard():
-            QApplication.clipboard().setText(password_display.text())
+        self.main_content.setWidget(container)
 
-        copy_button = QPushButton("Copiar al portapapeles")
-        copy_button.setStyleSheet("""
-            QPushButton {
-                background-color: #1E90FF;
-                color: white;
-                font-size: 14px;
-                padding: 10px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #4682B4;
-            }
-        """)
-        copy_button.clicked.connect(copy_to_clipboard)
-        layout.addWidget(copy_button)
-
-        # Agregar el contenido principal
-        self.main_content.setLayout(layout)
-
-    def increment_value(self, edit):
-        current_value = int(edit.text())
-        edit.setText(str(current_value + 1))
-
-    def decrement_value(self, edit):
-        current_value = int(edit.text())
-        if current_value > 0:
-            edit.setText(str(current_value - 1))
-
+    def copy_to_clipboard(self, password):
+        """Copia la contraseña al portapapeles."""
+        QApplication.clipboard().setText(password)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = App()
+    window.show()  # Asegúrate de mostrar la ventana principal
     sys.exit(app.exec())

@@ -1,7 +1,6 @@
 import random
 import string
 
-
 def generar_contraseña(longitud, incluir_mayusculas=True, incluir_minusculas=True, incluir_numeros=True,
                        incluir_especiales=True, min_numeros=1, min_especiales=1):
     """
@@ -31,6 +30,10 @@ def generar_contraseña(longitud, incluir_mayusculas=True, incluir_minusculas=Tr
 
     if not caracteres:
         return "Seleccione al menos una opción"
+
+    # Verificación de longitud mínima
+    if min_numeros + min_especiales > longitud:
+        return "La longitud de la contraseña es demasiado corta para los requisitos mínimos."
 
     # Generar partes específicas
     contraseña = []
