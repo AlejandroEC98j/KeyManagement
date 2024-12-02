@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QScrollArea, QComboBox, QSlider, QCheckBox
 )
 from PyQt6.QtCore import Qt
+from datetime import datetime
 from src.logica.archivos import ArchivoManager
 from src.logica.funciones import generar_contraseña
 
@@ -284,6 +285,100 @@ class App(QWidget):
         dialog.close()
         self.show_archivos()
 
+    def edit_password_window(self, idx):
+        """Abre una ventana para editar una contraseña existente."""
+        if 0 <= idx < len(self.archivo_manager.get_passwords()):
+            password_data = self.archivo_manager.get_passwords()[idx]
+
+            dialog = QWidget()
+            dialog.setWindowTitle("Editar Contraseña")
+            dialog.setGeometry(300, 300, 400, 300)
+
+            layout = QVBoxLayout(dialog)
+
+            self.network_input = QLineEdit(password_data["network"])
+            self.network_input.setStyleSheet("border: 1px solid #BDC3C7; padding: 10px; border-radius: 5px;")
+            layout.addWidget(QLabel("Nombre de la red social:"))
+            layout.addWidget(self.network_input)
+
+            self.email_input = QLineEdit(password_data["email"])
+            self.email_input.setStyleSheet("border: 1px solid #BDC3C7; padding: 10px; border-radius: 5px;")
+            layout.addWidget(QLabel("Correo electrónico:"))
+            layout.addWidget(self.email_input)
+
+            self.category_input = QComboBox()
+            self.category_input.addItems(["Trabajo", "Redes sociales", "Bancario"])
+            self.category_input.setCurrentText(password_data["category"])
+            layout.addWidget(QLabel("Categoría:"))
+            layout.addWidget(self.category_input)
+
+            self.password_input = QLineEdit(password_data["password"])
+            self.password_input.setStyleSheet("border: 1px solid #BDC3C7; padding: 10px; border-radius: 5px;")
+            layout.addWidget(QLabel("Contraseña:"))
+            layout.addWidget(self.password_input)
+
+            save_button = QPushButton("Guardar")
+            save_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #1ABC9C;
+                    color: white;
+                    font-size: 14px;
+                    padding: 10px;
+                    border-radius: 15px;
+                }
+                QPushButton:hover {
+                    background-color: #16A085;
+                }
+            """)
+            save_button.clicked.connect(lambda: self.save_edited_password(dialog, idx))
+            layout.addWidget(save_button)
+
+            dialog.show()
+
+    def save_edited_password(self, dialog, idx):
+        """Guarda los cambios realizados en la contraseña."""
+        try:
+            # Asegúrate de que el índice sea válido
+            if not (0 <= idx < len(self.archivo_manager.get_passwords())):
+                print("Índice inválido")
+                return
+
+            # Recupera los valores actuales desde los campos de entrada
+            updated_password = {
+                "network": self.network_input.text(),
+                "email": self.email_input.text(),
+                "category": self.category_input.currentText(),
+                "password": self.password_input.text(),
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+
+            # Actualiza la contraseña en la lista
+            self.archivo_manager.passwords[idx] = updated_password
+
+            # Cierra la ventana de edición
+            dialog.close()
+
+            # Refresca la lista en la interfaz principal
+            self.show_archivos()
+            print("Contraseña actualizada correctamente:", updated_password)
+        except Exception as e:
+            print("Error al guardar los cambios:", e)
+
+    def delete_password(self, idx):
+        """Elimina una contraseña de la lista."""
+        try:
+            # Verificar que el índice sea válido
+            if 0 <= idx < len(self.archivo_manager.get_passwords()):
+                self.archivo_manager.delete_password(idx)
+                print(f"Contraseña eliminada en el índice {idx}.")
+            else:
+                print("Índice inválido para eliminación.")
+
+            # Actualizar la interfaz después de eliminar
+            self.show_archivos()
+        except Exception as e:
+            print("Error al eliminar contraseña:", e)
+
     def show_advanced_password_generator(self):
         """Muestra la sección de generador de contraseñas."""
         container = QWidget()
@@ -372,6 +467,28 @@ class App(QWidget):
             }
         """)
         layout.addWidget(generate_button)
+
+        # Botón de copiar
+        copy_button = QPushButton("Copiar")
+        copy_button.setStyleSheet("""
+               QPushButton {
+                   background-color: #F39C12;
+                   color: white;
+                   font-size: 14px;
+                   padding: 10px;
+                   border-radius: 10px;
+                   border: 2px solid transparent;
+               }
+               QPushButton:hover {
+                   background-color: #E67E22;
+               }
+           """)
+
+        # Conectar el botón de copiar con el método 'copy_to_clipboard'
+        copy_button.clicked.connect(lambda checked: self.copy_to_clipboard(password_display.text()))
+
+        # Agregar el botón a la interfaz
+        layout.addWidget(copy_button)
 
         def generate_password():
             password = generar_contraseña(
